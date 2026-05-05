@@ -340,7 +340,7 @@ const PublicSubmissionPage: React.FC = () => {
                 {program.name}
               </h1>
               {program.description && (
-                <p className="text-primary-200 text-sm mt-1 line-clamp-2 max-w-xl">
+                <p className="text-primary-200 text-sm mt-1 line-clamp-4 max-w-xl">
                   {program.description}
                 </p>
               )}
