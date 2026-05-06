@@ -55,11 +55,11 @@ const SectionHeader: React.FC<{ icon: React.ReactNode; title: string; subtitle?:
 );
 
 /* ─── Form field wrapper ─────────────────────────────────────────────────── */
-const Field: React.FC<{ label: string; required?: boolean; error?: string; helper?: string; children: React.ReactNode }> = ({
-  label, required, error, helper, children
+const Field: React.FC<{ label: string; fieldId?: string; required?: boolean; error?: string; helper?: string; children: React.ReactNode }> = ({
+  label, fieldId, required, error, helper, children
 }) => (
   <div className="space-y-1.5">
-    <label className="block text-sm font-medium text-gray-700">
+    <label htmlFor={fieldId} className="block text-sm font-medium text-gray-700">
       {label}
       {required && <span className="text-error-500 ml-1">*</span>}
     </label>
@@ -669,83 +669,95 @@ const PublicSubmissionPage: React.FC = () => {
             </div>
             <div className="px-6 pb-6 grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div className="sm:col-span-2">
-                <Field label="Nom complet" required error={errors.name}>
+                <Field fieldId="field-name" label="Nom complet" required error={errors.name}>
                   <div className="relative">
                     <User className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                     <input
+                      id="field-name"
                       type="text"
                       value={submitterInfo.name}
                       onChange={e => handleSubmitterInfoChange('name', e.target.value)}
                       placeholder="Prénom Nom"
+                      autoComplete="name"
                       className={`${inputBase} pl-10 ${errors.name ? inputError : ''}`}
                     />
                   </div>
                 </Field>
               </div>
 
-              <Field label="Adresse e-mail" required error={errors.email}>
+              <Field fieldId="field-email" label="Adresse e-mail" required error={errors.email}>
                 <div className="relative">
                   <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
+                    id="field-email"
                     type="email"
                     value={submitterInfo.email}
                     onChange={e => handleSubmitterInfoChange('email', e.target.value)}
                     placeholder="prenom.nom@exemple.com"
+                    autoComplete="email"
                     className={`${inputBase} pl-10 ${errors.email ? inputError : ''}`}
                   />
                 </div>
               </Field>
 
-              <Field label="Téléphone">
+              <Field fieldId="field-phone" label="Téléphone">
                 <div className="relative">
                   <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
+                    id="field-phone"
                     type="tel"
                     value={submitterInfo.phone}
                     onChange={e => handleSubmitterInfoChange('phone', e.target.value)}
                     placeholder="+221 77 000 00 00"
+                    autoComplete="tel"
                     className={`${inputBase} pl-10`}
                   />
                 </div>
               </Field>
 
               <div className="sm:col-span-2">
-                <Field label="Organisation / Établissement">
+                <Field fieldId="field-organization" label="Organisation / Établissement">
                   <div className="relative">
                     <Building className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                     <input
+                      id="field-organization"
                       type="text"
                       value={submitterInfo.organization}
                       onChange={e => handleSubmitterInfoChange('organization', e.target.value)}
                       placeholder="ESP – UCAD (optionnel)"
+                      autoComplete="organization"
                       className={`${inputBase} pl-10`}
                     />
                   </div>
                 </Field>
               </div>
 
-              <Field label="Mot de passe" required error={errors.password} helper="Minimum 6 caractères. Requis pour sauvegarder un brouillon ou soumettre.">
+              <Field fieldId="field-password" label="Mot de passe" required error={errors.password} helper="Minimum 6 caractères. Requis pour sauvegarder un brouillon ou soumettre.">
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
+                    id="field-password"
                     type="password"
                     value={submitterInfo.password}
                     onChange={e => handleSubmitterInfoChange('password', e.target.value)}
                     placeholder="••••••••"
                     minLength={6}
+                    autoComplete="new-password"
                     className={`${inputBase} pl-10 ${errors.password ? inputError : ''}`}
                   />
                 </div>
               </Field>
 
-              <Field label="Confirmer le mot de passe" required error={errors.confirmPassword}>
+              <Field fieldId="field-confirm-password" label="Confirmer le mot de passe" required error={errors.confirmPassword}>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
+                    id="field-confirm-password"
                     type="password"
                     value={submitterInfo.confirmPassword}
                     onChange={e => handleSubmitterInfoChange('confirmPassword', e.target.value)}
                     placeholder="••••••••"
+                    autoComplete="new-password"
                     className={`${inputBase} pl-10 ${errors.confirmPassword ? inputError : ''}`}
                   />
                 </div>
@@ -764,18 +776,21 @@ const PublicSubmissionPage: React.FC = () => {
               />
             </div>
             <div className="px-6 pb-6 space-y-5">
-              <Field label="Titre du projet" required error={errors.projectName}>
+              <Field fieldId="field-project-title" label="Titre du projet" required error={errors.projectName}>
                 <input
+                  id="field-project-title"
                   type="text"
                   value={submitterInfo.projectName}
                   onChange={e => handleSubmitterInfoChange('projectName', e.target.value)}
                   placeholder="Titre complet du projet"
+                  autoComplete="off"
                   className={`${inputBase} ${errors.projectName ? inputError : ''}`}
                 />
               </Field>
 
-              <Field label="Description du projet" required error={errors.description}>
+              <Field fieldId="field-project-description" label="Description du projet" required error={errors.description}>
                 <textarea
+                  id="field-project-description"
                   value={projectInfo.description}
                   onChange={e => handleProjectInfoChange('description', e.target.value)}
                   rows={4}
@@ -785,7 +800,7 @@ const PublicSubmissionPage: React.FC = () => {
               </Field>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
-                <Field label="Secteur d'activité" required error={errors.activitySectorId}>
+                <Field fieldId="field-activity-sector" label="Secteur d'activité" required error={errors.activitySectorId}>
                   {sectorsLoading ? (
                     <div className={`${inputBase} flex items-center gap-2 text-gray-400`}>
                       <div className="h-4 w-4 border-2 border-gray-300 border-t-primary-500 rounded-full animate-spin" />
@@ -799,6 +814,7 @@ const PublicSubmissionPage: React.FC = () => {
                     <div className="relative">
                       <Briefcase className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                       <select
+                        id="field-activity-sector"
                         value={projectInfo.activitySectorId}
                         onChange={e => handleProjectInfoChange('activitySectorId', e.target.value)}
                         className={`${inputBase} pl-10 appearance-none ${errors.activitySectorId ? inputError : ''}`}
@@ -813,10 +829,11 @@ const PublicSubmissionPage: React.FC = () => {
                   )}
                 </Field>
 
-                <Field label="Durée d'existence (mois)" helper="Depuis combien de mois existe votre projet ?">
+                <Field fieldId="field-age-months" label="Durée d'existence (mois)" helper="Depuis combien de mois existe votre projet ?">
                   <div className="relative">
                     <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                     <input
+                      id="field-age-months"
                       type="number"
                       min="0"
                       max="600"
@@ -848,37 +865,44 @@ const PublicSubmissionPage: React.FC = () => {
                     return <TemplateSectionDivider key={field.id} label={field.label} />;
                   }
 
+                  const inputId = `tpl-${field.id}`;
                   return (
                     <Field
                       key={field.id}
+                      fieldId={inputId}
                       label={field.label}
                       required={field.required}
                       helper={field.helperText}
                     >
                       {field.type === 'text' && (
                         <input
+                          id={inputId}
                           type="text"
                           required={field.required}
                           value={formData[field.id] || ''}
                           onChange={e => handleFieldChange(field.id, e.target.value)}
                           placeholder={field.placeholder}
+                          autoComplete="off"
                           className={inputBase}
                         />
                       )}
 
                       {field.type === 'email' && (
                         <input
+                          id={inputId}
                           type="email"
                           required={field.required}
                           value={formData[field.id] || ''}
                           onChange={e => handleFieldChange(field.id, e.target.value)}
                           placeholder={field.placeholder}
+                          autoComplete="off"
                           className={inputBase}
                         />
                       )}
 
                       {field.type === 'number' && (
                         <input
+                          id={inputId}
                           type="number"
                           required={field.required}
                           value={formData[field.id] || ''}
@@ -913,6 +937,7 @@ const PublicSubmissionPage: React.FC = () => {
 
                       {field.type === 'textarea' && (
                         <textarea
+                          id={inputId}
                           required={field.required}
                           value={formData[field.id] || ''}
                           onChange={e => handleFieldChange(field.id, e.target.value)}
@@ -925,6 +950,7 @@ const PublicSubmissionPage: React.FC = () => {
                       {field.type === 'select' && field.options && (
                         <div className="relative">
                           <select
+                            id={inputId}
                             required={field.required}
                             value={formData[field.id] || ''}
                             onChange={e => handleFieldChange(field.id, e.target.value)}
@@ -1018,6 +1044,7 @@ const PublicSubmissionPage: React.FC = () => {
 
                       {field.type === 'date' && (
                         <input
+                          id={inputId}
                           type="date"
                           required={field.required}
                           value={formData[field.id] || ''}
@@ -1085,51 +1112,51 @@ const PublicSubmissionPage: React.FC = () => {
           )}
 
           {/* ── Save draft + Submit bar ── */}
-          <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-
-              {/* Draft save button + status */}
-              <div className="flex items-center gap-3 flex-1 min-w-0">
-                <button
-                  type="button"
-                  onClick={handleSaveDraft}
-                  disabled={isSavingDraft || isSubmitting}
-                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
-                >
-                  {isSavingDraft
-                    ? <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
-                    : <Save className="h-4 w-4" />
-                  }
-                  Enregistrer le brouillon
-                </button>
-
-                <div className="min-w-0">
-                  {draftStatus === 'saving' && (
-                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                      <div className="h-3 w-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
-                      Sauvegarde…
-                    </span>
-                  )}
-                  {draftStatus === 'saved' && lastSavedAt && (
-                    <span className="flex items-center gap-1.5 text-xs text-accent-600">
-                      <CheckCircle className="h-3.5 w-3.5" />
-                      Brouillon enregistré à {formatSavedTime(lastSavedAt)}
-                    </span>
-                  )}
-                  {draftStatus === 'error' && (
-                    <span className="flex items-center gap-1.5 text-xs text-error-600">
-                      <AlertCircle className="h-3.5 w-3.5" />
-                      Erreur lors de la sauvegarde
-                    </span>
-                  )}
-                  {draftStatus === 'idle' && (
-                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
-                      <Clock className="h-3.5 w-3.5" />
-                      Auto-sauvegarde après 30 s d'inactivité
-                    </span>
-                  )}
-                </div>
+          <div className="bg-white rounded-2xl shadow-sm border-2 border-primary-100 px-6 py-5">
+            {/* Draft status pill */}
+            <div className="flex items-center gap-2 mb-4 pb-4 border-b border-gray-100">
+              <div className="flex items-center gap-2 flex-1 min-w-0">
+                {draftStatus === 'saving' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-500 bg-gray-100 rounded-full px-3 py-1">
+                    <div className="h-3 w-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    Sauvegarde en cours…
+                  </span>
+                )}
+                {draftStatus === 'saved' && lastSavedAt && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-accent-700 bg-accent-50 rounded-full px-3 py-1 font-medium">
+                    <CheckCircle className="h-3.5 w-3.5" />
+                    Brouillon enregistré à {formatSavedTime(lastSavedAt)}
+                  </span>
+                )}
+                {draftStatus === 'error' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-error-700 bg-error-50 rounded-full px-3 py-1">
+                    <AlertCircle className="h-3.5 w-3.5" />
+                    Erreur de sauvegarde — vérifiez vos identifiants
+                  </span>
+                )}
+                {draftStatus === 'idle' && (
+                  <span className="inline-flex items-center gap-1.5 text-xs text-gray-400 bg-gray-50 rounded-full px-3 py-1">
+                    <Clock className="h-3.5 w-3.5" />
+                    Non sauvegardé — auto-sauvegarde après 30 s
+                  </span>
+                )}
               </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-3">
+              {/* Draft save button */}
+              <button
+                type="button"
+                onClick={handleSaveDraft}
+                disabled={isSavingDraft || isSubmitting}
+                className="w-full sm:w-auto inline-flex items-center justify-center gap-2 px-5 py-2.5 rounded-lg border-2 border-primary-200 bg-primary-50 hover:bg-primary-100 text-sm font-semibold text-primary-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isSavingDraft
+                  ? <div className="h-4 w-4 border-2 border-primary-400 border-t-transparent rounded-full animate-spin" />
+                  : <Save className="h-4 w-4" />
+                }
+                Enregistrer le brouillon
+              </button>
 
               <Button
                 type="submit"
@@ -1137,13 +1164,13 @@ const PublicSubmissionPage: React.FC = () => {
                 leftIcon={<Send className="h-4 w-4" />}
                 size="lg"
                 variant="primary"
-                className="flex-shrink-0 px-8"
+                className="w-full sm:w-auto flex-shrink-0 px-8"
               >
                 {isSubmitting ? 'Soumission en cours…' : 'Soumettre le Projet'}
               </Button>
             </div>
 
-            <p className="text-xs text-gray-400 mt-3 text-center sm:text-left">
+            <p className="text-xs text-gray-400 mt-3">
               En soumettant ce formulaire, un compte sera créé ou connecté pour vous permettre de suivre votre candidature.
             </p>
           </div>
