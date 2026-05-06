@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useProgramStore } from '../../stores/programStore';
 import { useFormTemplateStore } from '../../stores/formTemplateStore';
@@ -22,11 +22,14 @@ import {
   Briefcase,
   ChevronRight,
   Upload,
-  Info
+  Info,
+  Save,
+  Clock,
+  RefreshCw
 } from 'lucide-react';
 import CurrencyInput from '../../components/ui/CurrencyInput';
 import espLogoImage from '../../assets/Logo_senegal-ucad.png';
-import { uploadFile, UploadedFile } from '../../utils/fileUpload';
+import { uploadFile } from '../../utils/fileUpload';
 
 /* ─── Shared input class ─────────────────────────────────────────────────── */
 const inputBase =
@@ -87,6 +90,8 @@ const TemplateSectionDivider: React.FC<{ label: string }> = ({ label }) => (
   </div>
 );
 
+type DraftStatus = 'idle' | 'saving' | 'saved' | 'error';
+
 /* ═══════════════════════════════════════════════════════════════════════════ */
 
 const PublicSubmissionPage: React.FC = () => {
@@ -95,7 +100,7 @@ const PublicSubmissionPage: React.FC = () => {
 
   const { programs, fetchPrograms } = useProgramStore();
   const { templates, fetchTemplates } = useFormTemplateStore();
-  const { addProject } = useProjectStore();
+  const { addProject, updateProject } = useProjectStore();
   const { register, login } = useAuthStore();
   const { sectors, fetchSectors, isLoading: sectorsLoading } = useActivitySectorStore();
 
@@ -104,6 +109,14 @@ const PublicSubmissionPage: React.FC = () => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [submitSuccess, setSubmitSuccess] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Draft state
+  const [draftId, setDraftId] = useState<string | null>(null);
+  const [draftStatus, setDraftStatus] = useState<DraftStatus>('idle');
+  const [lastSavedAt, setLastSavedAt] = useState<Date | null>(null);
+  const [isSavingDraft, setIsSavingDraft] = useState(false);
+  const [draftRestored, setDraftRestored] = useState(false);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const [submitterInfo, setSubmitterInfo] = useState({
     projectName: '',
@@ -134,13 +147,213 @@ const PublicSubmissionPage: React.FC = () => {
     loadData();
   }, []);
 
+  // Check for existing draft when user is already authenticated
+  useEffect(() => {
+    const checkForDraft = async () => {
+      if (!supabase || !programId) return;
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session?.user) return;
+
+      const { data: authProfile } = await supabase
+        .from('profiles')
+        .select('id, name, email')
+        .eq('auth_user_id', session.user.id)
+        .maybeSingle();
+
+      if (!authProfile) return;
+
+      const { data: draft } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('program_id', programId)
+        .eq('submitter_id', authProfile.id)
+        .eq('status', 'draft')
+        .order('updated_at', { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (!draft) return;
+
+      setDraftId(draft.id);
+      setLastSavedAt(new Date(draft.updated_at));
+      setDraftRestored(true);
+
+      setSubmitterInfo(prev => ({
+        ...prev,
+        projectName: draft.title || prev.projectName,
+        name: draft.submitter_name || authProfile.name || prev.name,
+        email: draft.submitter_email || authProfile.email || prev.email,
+        phone: draft.submitter_phone || prev.phone
+      }));
+      setProjectInfo(prev => ({
+        ...prev,
+        description: draft.project_description || prev.description,
+        ageMonths: draft.project_age_months != null ? String(draft.project_age_months) : prev.ageMonths,
+        activitySectorId: draft.activity_sector_id || prev.activitySectorId
+      }));
+      if (draft.form_data) setFormData(draft.form_data);
+    };
+
+    checkForDraft();
+  }, [programId]);
+
   const program = programs.find(p => p.id === programId);
   const template = program?.formTemplateId
     ? templates.find(t => t.id === program.formTemplateId)
     : null;
 
+  const scheduleAutoSave = useCallback(() => {
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(() => {
+      // Trigger auto-save via ref to avoid stale closure issues
+      autoSaveTimerRef.current = null;
+      performAutoSave();
+    }, 30000);
+  }, []);
+
+  // Separate function for auto-save so it captures latest state via setState callback pattern
+  const performAutoSave = () => {
+    setSubmitterInfo(si => {
+      setProjectInfo(pi => {
+        setFormData(fd => {
+          setDraftId(did => {
+            if (!si.email && !si.name && !pi.description && !si.projectName) return did;
+            triggerSave(si, pi, fd, did, false);
+            return did;
+          });
+          return fd;
+        });
+        return pi;
+      });
+      return si;
+    });
+  };
+
+  const triggerSave = async (
+    si: typeof submitterInfo,
+    pi: typeof projectInfo,
+    fd: Record<string, any>,
+    currentDraftId: string | null,
+    manual: boolean
+  ) => {
+    if (!program || !supabase) return;
+
+    setIsSavingDraft(true);
+    setDraftStatus('saving');
+
+    try {
+      // Get or establish authentication
+      let submitterId: string | null = null;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session?.user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', session.user.id)
+          .maybeSingle();
+        submitterId = profile?.id ?? null;
+      }
+
+      if (!submitterId) {
+        const email = si.email.trim().toLowerCase();
+        if (!email || !si.password) {
+          if (manual) alert('Veuillez renseigner votre email et mot de passe pour sauvegarder le brouillon.');
+          setDraftStatus('error');
+          setIsSavingDraft(false);
+          return;
+        }
+
+        const registered = await register(si.name.trim() || email.split('@')[0], email, si.password, 'submitter', si.organization.trim());
+        if (!registered) {
+          const loggedIn = await login(email, si.password);
+          if (!loggedIn) {
+            if (manual) alert('Impossible de sauvegarder : identifiants incorrects.');
+            setDraftStatus('error');
+            setIsSavingDraft(false);
+            return;
+          }
+        }
+
+        await new Promise(resolve => setTimeout(resolve, 500));
+        const { data: { session: newSession } } = await supabase.auth.getSession();
+        if (!newSession?.user) {
+          setDraftStatus('error');
+          setIsSavingDraft(false);
+          return;
+        }
+
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('id')
+          .eq('auth_user_id', newSession.user.id)
+          .maybeSingle();
+        submitterId = profile?.id ?? null;
+      }
+
+      if (!submitterId) {
+        setDraftStatus('error');
+        setIsSavingDraft(false);
+        return;
+      }
+
+      const payload = {
+        title: si.projectName || 'Brouillon sans titre',
+        description: pi.description || '',
+        status: 'draft',
+        budget: 0,
+        timeline: '',
+        submitter_id: submitterId,
+        program_id: program.id,
+        form_data: fd,
+        project_description: pi.description || null,
+        project_age_months: pi.ageMonths ? parseInt(pi.ageMonths) : null,
+        activity_sector_id: pi.activitySectorId || null,
+        submitter_phone: si.phone || null,
+        submitter_name: si.name || null,
+        submitter_email: si.email.trim().toLowerCase() || null,
+        tags: [],
+        formalization_completed: false,
+        nda_signed: false,
+        manually_submitted: false
+      };
+
+      if (currentDraftId) {
+        const { error } = await supabase
+          .from('projects')
+          .update({ ...payload, updated_at: new Date().toISOString() })
+          .eq('id', currentDraftId)
+          .eq('status', 'draft');
+        if (error) throw error;
+      } else {
+        const { data, error } = await supabase
+          .from('projects')
+          .insert([payload])
+          .select('id')
+          .single();
+        if (error) throw error;
+        setDraftId(data.id);
+      }
+
+      setLastSavedAt(new Date());
+      setDraftStatus('saved');
+    } catch (error) {
+      console.error('Error saving draft:', error);
+      setDraftStatus('error');
+    } finally {
+      setIsSavingDraft(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    };
+  }, []);
+
   const handleFieldChange = (fieldId: string, value: any) => {
     setFormData(prev => ({ ...prev, [fieldId]: value }));
+    scheduleAutoSave();
   };
 
   const handleSubmitterInfoChange = (field: string, value: string) => {
@@ -148,6 +361,7 @@ const PublicSubmissionPage: React.FC = () => {
     if (errors[field]) {
       setErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
     }
+    scheduleAutoSave();
   };
 
   const handleProjectInfoChange = (field: string, value: string) => {
@@ -155,6 +369,11 @@ const PublicSubmissionPage: React.FC = () => {
     if (errors[field]) {
       setErrors(prev => { const e = { ...prev }; delete e[field]; return e; });
     }
+    scheduleAutoSave();
+  };
+
+  const handleSaveDraft = () => {
+    triggerSave(submitterInfo, projectInfo, formData, draftId, true);
   };
 
   const validateForm = (): boolean => {
@@ -210,25 +429,48 @@ const PublicSubmissionPage: React.FC = () => {
         }
       }
 
-      await addProject({
-        title: submitterInfo.projectName,
-        description: formData.description || formData.probleme || 'Description du projet',
-        status: 'submitted',
-        budget: 0,
-        timeline: '12 mois',
-        submitterId,
-        submitterName: submitterInfo.name,
-        submitterEmail: cleanEmail,
-        programId: program.id,
-        submissionDate: new Date(),
-        tags: [],
-        formData: finalFormData,
-        submittedAt: new Date(),
-        projectDescription: projectInfo.description,
-        projectAgeMonths: projectInfo.ageMonths ? parseInt(projectInfo.ageMonths) : undefined,
-        activitySectorId: projectInfo.activitySectorId || undefined,
-        submitterPhone: submitterInfo.phone || undefined
-      });
+      // Promote draft to submitted, or create new project
+      if (draftId) {
+        await updateProject(draftId, {
+          title: submitterInfo.projectName,
+          description: projectInfo.description || 'Description du projet',
+          status: 'submitted',
+          budget: 0,
+          timeline: '12 mois',
+          submitterId,
+          submitterName: submitterInfo.name,
+          submitterEmail: cleanEmail,
+          programId: program.id,
+          submissionDate: new Date(),
+          tags: [],
+          formData: finalFormData,
+          submittedAt: new Date(),
+          projectDescription: projectInfo.description,
+          projectAgeMonths: projectInfo.ageMonths ? parseInt(projectInfo.ageMonths) : undefined,
+          activitySectorId: projectInfo.activitySectorId || undefined,
+          submitterPhone: submitterInfo.phone || undefined
+        });
+      } else {
+        await addProject({
+          title: submitterInfo.projectName,
+          description: formData.description || formData.probleme || 'Description du projet',
+          status: 'submitted',
+          budget: 0,
+          timeline: '12 mois',
+          submitterId,
+          submitterName: submitterInfo.name,
+          submitterEmail: cleanEmail,
+          programId: program.id,
+          submissionDate: new Date(),
+          tags: [],
+          formData: finalFormData,
+          submittedAt: new Date(),
+          projectDescription: projectInfo.description,
+          projectAgeMonths: projectInfo.ageMonths ? parseInt(projectInfo.ageMonths) : undefined,
+          activitySectorId: projectInfo.activitySectorId || undefined,
+          submitterPhone: submitterInfo.phone || undefined
+        });
+      }
 
       setSubmitSuccess(true);
     } catch (error) {
@@ -248,6 +490,9 @@ const PublicSubmissionPage: React.FC = () => {
       setIsSubmitting(false);
     }
   };
+
+  const formatSavedTime = (date: Date) =>
+    date.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' });
 
   /* ── Loading ── */
   if (!program) {
@@ -378,6 +623,28 @@ const PublicSubmissionPage: React.FC = () => {
         </div>
       </div>
 
+      {/* ── Draft restored banner ── */}
+      {draftRestored && (
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 pt-6">
+          <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-xl px-4 py-3">
+            <RefreshCw className="h-4 w-4 text-blue-500 flex-shrink-0" />
+            <p className="text-sm text-blue-700 flex-1">
+              Un brouillon a été restauré.{' '}
+              {lastSavedAt && (
+                <span className="font-medium">Dernière sauvegarde : {formatSavedTime(lastSavedAt)}</span>
+              )}
+            </p>
+            <button
+              type="button"
+              onClick={() => setDraftRestored(false)}
+              className="text-blue-400 hover:text-blue-600 text-xs font-medium"
+            >
+              Fermer
+            </button>
+          </div>
+        </div>
+      )}
+
       {/* ── Form ── */}
       <div className="max-w-4xl mx-auto px-4 sm:px-6 py-8">
         <form onSubmit={handleSubmit} className="space-y-6" noValidate>
@@ -449,7 +716,7 @@ const PublicSubmissionPage: React.FC = () => {
                 </Field>
               </div>
 
-              <Field label="Mot de passe" required error={errors.password} helper="Minimum 6 caractères">
+              <Field label="Mot de passe" required error={errors.password} helper="Minimum 6 caractères. Requis pour sauvegarder un brouillon ou soumettre.">
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400 pointer-events-none" />
                   <input
@@ -569,7 +836,6 @@ const PublicSubmissionPage: React.FC = () => {
               </div>
               <div className="px-6 pb-6 space-y-5">
                 {template.fields.map((field) => {
-                  /* Section dividers */
                   if (field.type === 'section') {
                     return <TemplateSectionDivider key={field.id} label={field.label} />;
                   }
@@ -657,7 +923,7 @@ const PublicSubmissionPage: React.FC = () => {
                             className={`${inputBase} appearance-none`}
                           >
                             <option value="">Sélectionnez une option</option>
-                            {field.options.map(option => (
+                            {field.options.map((option: string) => (
                               <option key={option} value={option}>{option}</option>
                             ))}
                           </select>
@@ -667,19 +933,17 @@ const PublicSubmissionPage: React.FC = () => {
 
                       {field.type === 'radio' && field.options && (
                         <div className="space-y-2.5 pt-1">
-                          {field.options.map(option => (
+                          {field.options.map((option: string) => (
                             <label key={option} className="flex items-center gap-3 cursor-pointer group">
-                              <div className="relative">
-                                <input
-                                  type="radio"
-                                  name={field.id}
-                                  value={option}
-                                  checked={formData[field.id] === option}
-                                  onChange={e => handleFieldChange(field.id, e.target.value)}
-                                  required={field.required}
-                                  className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
-                                />
-                              </div>
+                              <input
+                                type="radio"
+                                name={field.id}
+                                value={option}
+                                checked={formData[field.id] === option}
+                                onChange={e => handleFieldChange(field.id, e.target.value)}
+                                required={field.required}
+                                className="h-4 w-4 text-primary-600 border-gray-300 focus:ring-primary-500"
+                              />
                               <span className="text-sm text-gray-700 group-hover:text-gray-900">{option}</span>
                             </label>
                           ))}
@@ -688,7 +952,7 @@ const PublicSubmissionPage: React.FC = () => {
 
                       {field.type === 'multiple_select' && field.options && (
                         <div className="space-y-2.5 pt-1">
-                          {field.options.map(option => (
+                          {field.options.map((option: string) => (
                             <label key={option} className="flex items-center gap-3 cursor-pointer group">
                               <input
                                 type="checkbox"
@@ -710,7 +974,7 @@ const PublicSubmissionPage: React.FC = () => {
 
                       {field.type === 'checkbox_group' && field.options && (
                         <div className="space-y-2.5 pt-1">
-                          {field.options.map(option => (
+                          {field.options.map((option: string) => (
                             <label key={option} className="flex items-center gap-3 cursor-pointer group">
                               <input
                                 type="checkbox"
@@ -812,12 +1076,53 @@ const PublicSubmissionPage: React.FC = () => {
             </div>
           )}
 
-          {/* ── Submit ── */}
+          {/* ── Save draft + Submit bar ── */}
           <div className="bg-white rounded-2xl shadow-sm border border-gray-100 px-6 py-5">
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
-              <p className="text-xs text-gray-500 text-center sm:text-left">
-                En soumettant ce formulaire, un compte sera créé ou connecté pour vous permettre de suivre votre candidature.
-              </p>
+
+              {/* Draft save button + status */}
+              <div className="flex items-center gap-3 flex-1 min-w-0">
+                <button
+                  type="button"
+                  onClick={handleSaveDraft}
+                  disabled={isSavingDraft || isSubmitting}
+                  className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-gray-200 bg-gray-50 hover:bg-gray-100 text-sm font-medium text-gray-700 transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0"
+                >
+                  {isSavingDraft
+                    ? <div className="h-4 w-4 border-2 border-gray-400 border-t-transparent rounded-full animate-spin" />
+                    : <Save className="h-4 w-4" />
+                  }
+                  Enregistrer le brouillon
+                </button>
+
+                <div className="min-w-0">
+                  {draftStatus === 'saving' && (
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <div className="h-3 w-3 border border-gray-400 border-t-transparent rounded-full animate-spin" />
+                      Sauvegarde…
+                    </span>
+                  )}
+                  {draftStatus === 'saved' && lastSavedAt && (
+                    <span className="flex items-center gap-1.5 text-xs text-accent-600">
+                      <CheckCircle className="h-3.5 w-3.5" />
+                      Brouillon enregistré à {formatSavedTime(lastSavedAt)}
+                    </span>
+                  )}
+                  {draftStatus === 'error' && (
+                    <span className="flex items-center gap-1.5 text-xs text-error-600">
+                      <AlertCircle className="h-3.5 w-3.5" />
+                      Erreur lors de la sauvegarde
+                    </span>
+                  )}
+                  {draftStatus === 'idle' && (
+                    <span className="flex items-center gap-1.5 text-xs text-gray-400">
+                      <Clock className="h-3.5 w-3.5" />
+                      Auto-sauvegarde après 30 s d'inactivité
+                    </span>
+                  )}
+                </div>
+              </div>
+
               <Button
                 type="submit"
                 isLoading={isSubmitting}
@@ -829,6 +1134,10 @@ const PublicSubmissionPage: React.FC = () => {
                 {isSubmitting ? 'Soumission en cours…' : 'Soumettre le Projet'}
               </Button>
             </div>
+
+            <p className="text-xs text-gray-400 mt-3 text-center sm:text-left">
+              En soumettant ce formulaire, un compte sera créé ou connecté pour vous permettre de suivre votre candidature.
+            </p>
           </div>
 
         </form>
