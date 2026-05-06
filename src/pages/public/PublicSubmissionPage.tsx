@@ -405,19 +405,27 @@ const PublicSubmissionPage: React.FC = () => {
         if (!loggedIn) throw new Error('Impossible de créer ou connecter le compte. Vérifiez votre mot de passe.');
       }
 
-      let sessionUserId: string | undefined;
-      if (supabase) {
-        await new Promise(resolve => setTimeout(resolve, 500));
-        const { data: { session } } = await supabase.auth.getSession();
-        sessionUserId = session?.user?.id;
-        if (!session) throw new Error("La session n'a pas pu être établie. Veuillez réessayer.");
-      }
+      if (!supabase) throw new Error('Client Supabase non disponible');
 
-      const { user: authUser } = useAuthStore.getState();
-      const submitterId = authUser?.id;
+      // Wait for session to be fully established then get the auth UUID
+      await new Promise(resolve => setTimeout(resolve, 800));
+      const { data: { user: authUserData }, error: userError } = await supabase.auth.getUser();
+      if (userError || !authUserData) throw new Error("La session n'a pas pu être établie. Veuillez réessayer.");
+
+      const sessionUserId = authUserData.id; // auth.uid() — required for storage RLS
+
+      // Get profile id for projects table
+      const { data: profileData } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('auth_user_id', sessionUserId)
+        .maybeSingle();
+
+      const submitterId = profileData?.id ?? useAuthStore.getState().user?.id;
       if (!submitterId) throw new Error("Impossible d'identifier l'utilisateur");
 
-      const fileStorageFolder = sessionUserId || submitterId;
+      // fileStorageFolder MUST equal auth.uid() to satisfy storage RLS policy
+      const fileStorageFolder = sessionUserId;
       const finalFormData = { ...formData };
 
       for (const [fieldId, file] of Object.entries(pendingFiles)) {
