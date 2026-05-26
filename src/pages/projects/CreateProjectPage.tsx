@@ -499,8 +499,8 @@ const CreateProjectPage: React.FC = () => {
                                 >
                                   <option value="">Sélectionnez une option</option>
                                   {field.options?.map((option: any, idx: number) => (
-                                    <option key={idx} value={option.value}>
-                                      {option.label}
+                                    <option key={idx} value={typeof option === 'string' ? option : option.value}>
+                                      {typeof option === 'string' ? option : option.label}
                                     </option>
                                   ))}
                                 </Field>
@@ -526,11 +526,11 @@ const CreateProjectPage: React.FC = () => {
                                         id={`formData.${field.id}.${idx}`}
                                         name={`formData.${field.id}`}
                                         type="radio"
-                                        value={option.value}
+                                        value={typeof option === 'string' ? option : option.value}
                                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                                       />
                                       <label htmlFor={`formData.${field.id}.${idx}`} className="ml-2 block text-sm text-gray-700">
-                                        {option.label}
+                                        {typeof option === 'string' ? option : option.label}
                                       </label>
                                     </div>
                                   ))}
@@ -546,8 +546,8 @@ const CreateProjectPage: React.FC = () => {
                                   size={Math.min(field.options?.length || 3, 5)}
                                 >
                                   {field.options?.map((option: any, idx: number) => (
-                                    <option key={idx} value={option.value}>
-                                      {option.label}
+                                    <option key={idx} value={typeof option === 'string' ? option : option.value}>
+                                      {typeof option === 'string' ? option : option.label}
                                     </option>
                                   ))}
                                 </Field>
