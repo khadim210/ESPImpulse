@@ -40,7 +40,7 @@ const FormBuilderPage: React.FC = () => {
   
   const handleAddField = () => {
     const newField: FormField = {
-      id: `field-${fields.length + 1}`,
+      id: `field-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
       type: 'text',
       label: '',
       name: '',
