@@ -414,7 +414,7 @@ const CreateProjectPage: React.FC = () => {
                       <div className="space-y-6">
                         {programTemplate.fields.map((field: any) => (
                           <div key={field.id}>
-                            <label htmlFor={`formData.${field.name}`} className="block text-sm font-medium text-gray-700">
+                            <label htmlFor={`formData.${field.id}`} className="block text-sm font-medium text-gray-700">
                               {field.label}
                               {field.required && <span className="text-error-600 ml-1">*</span>}
                             </label>
@@ -424,8 +424,8 @@ const CreateProjectPage: React.FC = () => {
                             <div className="mt-1">
                               {field.type === 'text' && (
                                 <Field
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   type="text"
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                   placeholder={field.placeholder}
@@ -434,8 +434,8 @@ const CreateProjectPage: React.FC = () => {
                               {field.type === 'textarea' && (
                                 <Field
                                   as="textarea"
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   rows={4}
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                   placeholder={field.placeholder}
@@ -443,21 +443,21 @@ const CreateProjectPage: React.FC = () => {
                               )}
                               {field.type === 'number' && (
                                 <Field
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   type="number"
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                   placeholder={field.placeholder}
                                 />
                               )}
                               {field.type === 'currency' && (
-                                <Field name={`formData.${field.name}`}>
+                                <Field name={`formData.${field.id}`}>
                                   {({ field: formikField, form }: any) => (
                                     <CurrencyInput
-                                      id={`formData.${field.name}`}
-                                      name={`formData.${field.name}`}
+                                      id={`formData.${field.id}`}
+                                      name={`formData.${field.id}`}
                                       value={formikField.value || 0}
-                                      onChange={(val) => form.setFieldValue(`formData.${field.name}`, val)}
+                                      onChange={(val) => form.setFieldValue(`formData.${field.id}`, val)}
                                       currencySymbol={
                                         field.currencyCode === 'EUR' ? '€' :
                                         field.currencyCode === 'USD' ? '$' :
@@ -475,8 +475,8 @@ const CreateProjectPage: React.FC = () => {
                               )}
                               {field.type === 'email' && (
                                 <Field
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   type="email"
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                   placeholder={field.placeholder}
@@ -484,8 +484,8 @@ const CreateProjectPage: React.FC = () => {
                               )}
                               {field.type === 'date' && (
                                 <Field
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   type="date"
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm placeholder-gray-400 focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                 />
@@ -493,8 +493,8 @@ const CreateProjectPage: React.FC = () => {
                               {field.type === 'select' && (
                                 <Field
                                   as="select"
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                 >
                                   <option value="">Sélectionnez une option</option>
@@ -508,12 +508,12 @@ const CreateProjectPage: React.FC = () => {
                               {field.type === 'checkbox' && (
                                 <div className="flex items-center">
                                   <Field
-                                    id={`formData.${field.name}`}
-                                    name={`formData.${field.name}`}
+                                    id={`formData.${field.id}`}
+                                    name={`formData.${field.id}`}
                                     type="checkbox"
                                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                                   />
-                                  <label htmlFor={`formData.${field.name}`} className="ml-2 block text-sm text-gray-700">
+                                  <label htmlFor={`formData.${field.id}`} className="ml-2 block text-sm text-gray-700">
                                     {field.description}
                                   </label>
                                 </div>
@@ -523,13 +523,13 @@ const CreateProjectPage: React.FC = () => {
                                   {field.options?.map((option: any, idx: number) => (
                                     <div key={idx} className="flex items-center">
                                       <Field
-                                        id={`formData.${field.name}.${idx}`}
-                                        name={`formData.${field.name}`}
+                                        id={`formData.${field.id}.${idx}`}
+                                        name={`formData.${field.id}`}
                                         type="radio"
                                         value={option.value}
                                         className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300"
                                       />
-                                      <label htmlFor={`formData.${field.name}.${idx}`} className="ml-2 block text-sm text-gray-700">
+                                      <label htmlFor={`formData.${field.id}.${idx}`} className="ml-2 block text-sm text-gray-700">
                                         {option.label}
                                       </label>
                                     </div>
@@ -539,8 +539,8 @@ const CreateProjectPage: React.FC = () => {
                               {field.type === 'multiple_select' && (
                                 <Field
                                   as="select"
-                                  id={`formData.${field.name}`}
-                                  name={`formData.${field.name}`}
+                                  id={`formData.${field.id}`}
+                                  name={`formData.${field.id}`}
                                   multiple
                                   className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
                                   size={Math.min(field.options?.length || 3, 5)}
@@ -556,7 +556,7 @@ const CreateProjectPage: React.FC = () => {
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-center w-full">
                                     <label
-                                      htmlFor={`file-upload-${field.name}`}
+                                      htmlFor={`file-upload-${field.id}`}
                                       className="flex flex-col items-center justify-center w-full h-32 border-2 border-gray-300 border-dashed rounded-lg cursor-pointer bg-gray-50 hover:bg-gray-100"
                                     >
                                       <div className="flex flex-col items-center justify-center pt-5 pb-6">
@@ -569,7 +569,7 @@ const CreateProjectPage: React.FC = () => {
                                         </p>
                                       </div>
                                       <input
-                                        id={`file-upload-${field.name}`}
+                                        id={`file-upload-${field.id}`}
                                         type="file"
                                         className="hidden"
                                         accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv"
@@ -578,25 +578,25 @@ const CreateProjectPage: React.FC = () => {
                                           const files = Array.from(e.target.files || []);
                                           for (const file of files) {
                                             try {
-                                              await handleFileUpload(field.name, file, tempProjectId);
+                                              await handleFileUpload(field.id, file, tempProjectId);
                                             } catch (error) {
                                               console.error('Upload failed:', error);
                                             }
                                           }
                                           e.target.value = '';
                                         }}
-                                        disabled={uploadingFiles[field.name]}
+                                        disabled={uploadingFiles[field.id]}
                                       />
                                     </label>
                                   </div>
-                                  {uploadingFiles[field.name] && (
+                                  {uploadingFiles[field.id] && (
                                     <div className="text-sm text-gray-500 text-center">
                                       Téléchargement en cours...
                                     </div>
                                   )}
-                                  {uploadedFiles[field.name] && uploadedFiles[field.name].length > 0 && (
+                                  {uploadedFiles[field.id] && uploadedFiles[field.id].length > 0 && (
                                     <div className="space-y-2">
-                                      {uploadedFiles[field.name].map((file, idx) => (
+                                      {uploadedFiles[field.id].map((file, idx) => (
                                         <div
                                           key={idx}
                                           className="flex items-center justify-between p-3 bg-gray-50 rounded-lg border border-gray-200"
@@ -610,7 +610,7 @@ const CreateProjectPage: React.FC = () => {
                                           </div>
                                           <button
                                             type="button"
-                                            onClick={() => handleFileRemove(field.name, idx)}
+                                            onClick={() => handleFileRemove(field.id, idx)}
                                             className="text-gray-400 hover:text-error-500"
                                           >
                                             <X className="h-5 w-5" />
