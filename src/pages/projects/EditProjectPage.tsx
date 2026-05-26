@@ -440,8 +440,8 @@ const EditProjectPage: React.FC = () => {
                               {field.label}
                               {field.required && <span className="text-error-600 ml-1">*</span>}
                             </label>
-                            {field.description && (
-                              <p className="mt-1 text-xs text-gray-500">{field.description}</p>
+                            {field.helperText && (
+                              <p className="mt-1 text-xs text-gray-500">{field.helperText}</p>
                             )}
                             <div className="mt-1">
                               {field.type === 'text' && (
@@ -536,8 +536,26 @@ const EditProjectPage: React.FC = () => {
                                     className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
                                   />
                                   <label htmlFor={`formData.${field.id}`} className="ml-2 block text-sm text-gray-700">
-                                    {field.description}
+                                    {field.label}
                                   </label>
+                                </div>
+                              )}
+                              {(field.type === 'checkbox_group' || field.type === 'multiple_select') && field.options && (
+                                <div className="space-y-2">
+                                  {field.options.map((option: any, idx: number) => {
+                                    const optVal = typeof option === 'string' ? option : option.value;
+                                    return (
+                                      <label key={idx} className="flex items-center gap-2 cursor-pointer">
+                                        <Field
+                                          type="checkbox"
+                                          name={`formData.${field.id}`}
+                                          value={optVal}
+                                          className="h-4 w-4 text-primary-600 focus:ring-primary-500 border-gray-300 rounded"
+                                        />
+                                        <span className="text-sm text-gray-700">{optVal}</span>
+                                      </label>
+                                    );
+                                  })}
                                 </div>
                               )}
                               {field.type === 'radio' && (
@@ -558,22 +576,6 @@ const EditProjectPage: React.FC = () => {
                                   ))}
                                 </div>
                               )}
-                              {field.type === 'multiple_select' && (
-                                <Field
-                                  as="select"
-                                  id={`formData.${field.id}`}
-                                  name={`formData.${field.id}`}
-                                  multiple
-                                  className="appearance-none block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-primary-500 focus:border-primary-500 sm:text-sm"
-                                  size={Math.min(field.options?.length || 3, 5)}
-                                >
-                                  {field.options?.map((option: any, idx: number) => (
-                                    <option key={idx} value={typeof option === 'string' ? option : option.value}>
-                                      {typeof option === 'string' ? option : option.label}
-                                    </option>
-                                  ))}
-                                </Field>
-                              )}
                               {field.type === 'file' && (
                                 <div className="space-y-3">
                                   <div className="flex items-center justify-center w-full">
@@ -587,15 +589,14 @@ const EditProjectPage: React.FC = () => {
                                           <span className="font-semibold">Cliquez pour uploader</span> ou glissez-déposez
                                         </p>
                                         <p className="text-xs text-gray-500">
-                                          PDF, DOC, DOCX, XLS, XLSX, JPG, PNG (Max. 50MB)
+                                          {field.accept ? `Formats : ${field.accept}` : 'PDF, DOC, DOCX, XLS, XLSX, JPG, PNG'} (Max. {field.maxSize ? Math.round(field.maxSize / 1048576) : 50}MB)
                                         </p>
                                       </div>
                                       <input
                                         id={`file-upload-${field.id}`}
                                         type="file"
                                         className="hidden"
-                                        accept=".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv"
-                                        multiple={field.multiple}
+                                        accept={field.accept || ".pdf,.doc,.docx,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.txt,.csv"}
                                         onChange={async (e) => {
                                           const files = Array.from(e.target.files || []);
                                           for (const file of files) {
