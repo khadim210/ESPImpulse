@@ -1,0 +1,13 @@
+-- Fix SELECT policy: allow any authenticated user to read files
+DROP POLICY IF EXISTS "Users can read own submission files" ON storage.objects;
+
+CREATE POLICY "Authenticated users can read submission files"
+  ON storage.objects
+  FOR SELECT
+  TO authenticated
+  USING (bucket_id = 'submission-files');
+
+-- Increase file size limit from 10MB to 50MB
+UPDATE storage.buckets
+SET file_size_limit = 52428800
+WHERE id = 'submission-files';
